@@ -713,6 +713,7 @@ def mhc_pre_broadcast_tilelang(
     from vllm.model_executor.kernels.mhc.tilelang_kernels import (
         _MHC_PRE_BIG_FUSE_TILELANG_KERNEL,
     )
+    from vllm.utils.deep_gemm import is_deep_gemm_supported
 
     assert norm_weight is not None, "broadcast mHC pre currently requires fused RMSNorm"
     assert residual.dtype == torch.bfloat16
@@ -753,12 +754,13 @@ def mhc_pre_broadcast_tilelang(
         num_tokens, hidden_size, dtype=torch.bfloat16, device=residual.device
     )
 
+    use_deep_gemm = is_deep_gemm_supported()
     gemm_out_mul, gemm_out_sqrsum = _hc_prenorm_gemm_outputs(
         residual_flat,
         fn_broadcast,
         hidden_size=hidden_size,
         hc_mult=hc_mult,
-        use_tilelang_fallback=False,
+        use_tilelang_fallback=not use_deep_gemm,
     )
     _MHC_PRE_BIG_FUSE_TILELANG_KERNEL(
         gemm_out_mul,
